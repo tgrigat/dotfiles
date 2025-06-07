@@ -1,0 +1,60 @@
+btop: ~/.config/btop
+alacritty: ~/.config/alacritty
+# confsync: ~/confsync
+electron-flags.conf: ~/.config/electron-flags.conf
+eventviewsrc: ~/.config/eventviewsrc
+gtk-3.0: ~/.config/gtk-3.0
+helix: ~/.config/helix
+input-remapper-2: ~/.config/input-remapper-2
+kcookiejarrc: ~/.config/kcookiejarrc
+kde_local_share_backup.txt: ~/.config/kde_local_share_backup.txt
+kitty: ~/.config/kitty
+korganizerrc: ~/.config/korganizerrc
+ktimerrc: ~/.config/ktimerrc
+# kwinrc: ~/.config/kwinrc
+# kwinrulesrc: ~/.config/kwinrulesrc
+krunnerrc: ~/.config/krunnerrc
+lazygit: ~/.config/lazygit
+nvim: ~/.config/nvim
+# nvim.b: ~/.config/nvim.b
+paru: ~/.config/paru
+PlasmaUserFeedback: ~/.config/PlasmaUserFeedback
+plasma-workspace: ~/.config/plasma-workspace
+pacman: ~/.config/pacman
+ranger: ~/.config/ranger
+sioyek: ~/.config/sioyek
+# svim: ~/.config/svim
+tabletprofilesrc: ~/.config/tabletprofilesrc
+# tmux/.tmux.conf : ~/.tmux.conf
+# tmux/.tmux.conf.local : ~/.tmux.conf.local
+tmux: ~/.config/tmux
+# .tmux.conf: ~/.tmux.conf
+vifm: ~/.config/vifm
+vs_setting.json: ~/.config/vs_setting.json
+wezterm: ~/.config/wezterm
+zathura: ~/.config/zathura
+zsh: ~/.config/zsh
+# .zshrc: ~/.zshrc
+# ankisync: ~/.local/bin/ankisync
+.zshenv: ~/.zshenv
+nixpkgs: ~/.config/nixpkgs
+code-flags.conf: ~/.config/code-flags.conf
+libvirt.conf: ~/.config/libvirt/libvirt.conf
+zellij: ~/.config/zellij
+okular/local: ~/.local/share/kxmlgui5/okular
+okular/okularpartrc: ~/.config/okularpartrc
+# okular/okularrc: ~/.config/okularrc
+# lunarvide: ~/.local/bin/lunarvide
+arch.png: ~/.local/share/icons/arch.png
+eget.toml: ~/.eget.toml
+lunarvide: ~/.local/bin/lvide
+code-oss-settings.json: "~/.config/Code - OSS/User/settings.json"
+code-oss-keybindings.json: "~/.config/Code - OSS/User/keybindings.json"
+inputrc: ~/.config/inputrc
+vim_wrapper.sh: ~/.local/bin/vim
+yazi: ~/.config/yazi
+rio: ~/.config/rio
+chromium-flags.conf: "~/.config/chromium-flags.conf"
+neovide: ~/.config/neovide
+fish: ~/.config/fish
+systemd: ~/.config/systemd

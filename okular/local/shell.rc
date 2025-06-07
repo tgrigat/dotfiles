@@ -1,0 +1,39 @@
+<?xml version='1.0'?>
+<!DOCTYPE gui SYSTEM 'kpartgui.dtd'>
+<gui version="11" name="okular_shell">
+ <MenuBar>
+  <Menu name="file">
+   <DefineGroup name="file_open" append="open_merge"/>
+   <DefineGroup name="file_save" append="save_merge"/>
+   <DefineGroup name="file_print" append="print_merge"/>
+   <Action name="undo-close-tab" append="open_merge"/>
+  </Menu>
+  <!--Menu name="view" >
+   <Action name="fullscreen" />
+  </Menu-->
+  <Menu name="settings">
+   <DefineGroup name="show_merge" append="show_merge"/>
+   <DefineGroup name="configure_merge" append="configure_merge"/>
+  </Menu>
+  <Merge/>
+  <Menu name="help">
+   <DefineGroup name="about_merge" append="about_merge"/>
+  </Menu>
+ </MenuBar>
+ <ToolBar alreadyVisited="1" name="mainToolBar" noMerge="1">
+  <text translationDomain="okular">Main Toolbar</text>
+  <!--Action name="file_open_recent" /-->
+  <!--Action name="file_print" /-->
+  <Action name="options_configure_keybinding"/>
+ </ToolBar>
+ <ActionProperties scheme="Default">
+  <Action priority="0" name="okular_show_sidebar"/>
+  <Action priority="0" name="options_configure_keybinding" iconText="shortcuts"/>
+  <Action name="tab-next" shortcut="Ctrl+PgDown; W"/>
+  <Action name="tab-previous" shortcut="Ctrl+PgUp; B"/>
+  <Action name="help_donate" shortcut=""/>
+  <Action name="help_report_bug" shortcut=""/>
+  <Action name="options_configure_toolbars" shortcut=""/>
+  <Action name="switch_application_language" shortcut=""/>
+ </ActionProperties>
+</gui>

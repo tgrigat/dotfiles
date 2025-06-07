@@ -1,0 +1,33 @@
+layout {
+
+  default_tab_template split_direction="horizontal" {
+    pane size=1 borderless=true {
+        plugin location="zellij:tab-bar"
+    }
+    children
+    pane size=1 borderless=true {
+        plugin location="zellij:status-bar"
+    }
+  }
+
+  tab_template name="default_tab" split_direction="horizontal" {
+    pane size=1 borderless=true {
+        plugin location="zellij:tab-bar"
+    }
+    children
+    pane size=1 borderless=true {
+        plugin location="zellij:status-bar"
+    }
+  }
+
+  pane_template name="default_pane" split_direction="vertical"  {
+    borderless true
+  }
+  
+  default_tab name="main ws" split_direction="vertical" cwd="/export/home/yang/git/thesis_experiment_repo/" {
+    default_pane name="main" {
+      focus true
+    }
+  }
+
+}

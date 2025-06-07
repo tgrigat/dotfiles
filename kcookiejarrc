@@ -1,0 +1,10 @@
+[Cookie Dialog]
+PreferredPolicy=1
+ShowCookieDetails=false
+
+[Cookie Policy]
+AcceptSessionCookies=true
+CookieDomainAdvice=.slack.com:Accept,.reddit.com:Reject
+CookieGlobalAdvice=Ask
+Cookies=true
+RejectCrossDomainCookies=true

@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+import os
+import sys
+import signal
+import random
+import socket
+import asyncio
+import threading
+import select
+import socketserver
+import typer
+import paramiko
+from paramiko.config import SSHConfig
+
+app = typer.Typer(help="Remote Neovim launcher using Paramiko")
+
+
+class RemoteNeovimSession:
+    def __init__(
+        self, server: str, path: str, debug: bool = False, server_only: bool = False
+    ):
+        self.server = server
+        self.path = path
+        self.debug = debug
+        self.server_only = server_only
+        self.local_port = self.find_free_port()
+        self.ssh_client = None
+        self.transport = None
+        self.channel = None
+        self.neovide_process = None
+        self._cleaned_up = False
+
+        # SSH connection details (will be populated from SSH config)
+        self.hostname = server
+        self.port = 22
+        self.username = None
+        self.key_filename = None
+
+    def find_free_port(self) -> int:
+        """Find a random free port between 3000 and 6000"""
+        while True:
+            port = random.randint(3000, 6000)
+            if self.is_port_free(port):
+                return port
+
+    def is_port_free(self, port: int) -> bool:
+        """Check if a port is available on the local machine"""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(("localhost", port)) != 0
+
+    def resolve_ssh_config(self):
+        """Read ~/.ssh/config and resolve the host details"""
+        ssh_config = SSHConfig()
+        user_config_file = os.path.expanduser("~/.ssh/config")
+        if os.path.exists(user_config_file):
+            with open(user_config_file) as f:
+                ssh_config.parse(f)
+
+        # Get host config
+        host_config = ssh_config.lookup(self.server)
+
+        self.hostname = host_config.get("hostname", self.server)
+        self.port = int(host_config.get("port", 22))
+        self.username = host_config.get("user")
+        identity_file = host_config.get("identityfile")
+        if identity_file and isinstance(identity_file, list) and identity_file:
+            self.key_filename = os.path.expanduser(identity_file[0])
+
+        if self.debug:
+            print(
+                f"[CLIENT] Resolved SSH config: {self.hostname}:{self.port} as {self.username}"
+            )
+            if self.key_filename:
+                print(f"[CLIENT] Using key file: {self.key_filename}")
+
+    def connect_ssh(self):
+        """Establish SSH connection using Paramiko"""
+        self.ssh_client = paramiko.SSHClient()
+        self.ssh_client.load_system_host_keys()
+        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        connect_kwargs = {
+            "hostname": self.hostname,
+            "port": self.port,
+        }
+
+        if self.username:
+            connect_kwargs["username"] = self.username
+
+        if self.key_filename and os.path.exists(self.key_filename):
+            connect_kwargs["key_filename"] = self.key_filename
+
+        if self.debug:
+            print(f"[CLIENT] Connecting to SSH: {connect_kwargs}")
+
+        self.ssh_client.connect(**connect_kwargs)
+        self.transport = self.ssh_client.get_transport()
+
+        if self.debug:
+            print("[CLIENT] SSH connection established")
+
+    def setup_port_forwarding(self):
+        """Set up port forwarding using Paramiko's approach"""
+        if self.debug:
+            print(
+                f"[CLIENT] Setting up port forwarding on local port {self.local_port}"
+            )
+
+        try:
+            # Configure the server with our transport and debug settings
+            server = ForwardServer(("localhost", self.local_port), ForwardHandler)
+            server.ssh_transport = self.transport
+            server.remote_host = (
+                "localhost"  # Where Neovim will listen on remote machine
+            )
+            server.remote_port = self.local_port  # Port Neovim will listen on
+            server.debug = self.debug
+
+            # Start the forwarding server in a separate thread
+            self.forwarding_thread = threading.Thread(
+                target=server.serve_forever, daemon=True
+            )
+            self.forwarding_thread.start()
+
+            if self.debug:
+                print(
+                    f"[CLIENT] Port forwarding established: localhost:{self.local_port}"
+                )
+        except Exception as e:
+            print(f"[CLIENT] Error setting up port forwarding: {e}")
+            raise
+
+    def start_remote_nvim(self):
+        """Start nvim --headless on the remote server"""
+        cmd = f"cd {self.path} && nvim --headless --listen 0.0.0.0:{self.local_port} ."
+
+        if self.debug:
+            print(f"[CLIENT] Starting remote Neovim: {cmd}")
+
+        self.channel = self.transport.open_session()
+        self.channel.exec_command(cmd)
+
+        if self.debug:
+            print("[CLIENT] Remote Neovim started")
+
+    async def wait_for_neovim_server(self, max_attempts=10):
+        """Wait for Neovim server to be ready"""
+        for attempt in range(max_attempts):
+            try:
+                if self.debug:
+                    print(
+                        f"[CLIENT] Attempting to connect to Neovim server on port {self.local_port} (attempt {attempt + 1})"
+                    )
+                _, writer = await asyncio.wait_for(
+                    asyncio.open_connection("localhost", self.local_port), timeout=5.0
+                )
+                writer.close()
+                await writer.wait_closed()
+                if self.debug:
+                    print(
+                        f"[CLIENT] Neovim server is ready after {attempt + 1} attempts"
+                    )
+                return True
+            except asyncio.TimeoutError:
+                if self.debug:
+                    print(f"[CLIENT] Attempt {attempt + 1} timed out, retrying...")
+            except Exception as e:
+                if self.debug:
+                    print(
+                        f"[CLIENT] Attempt {attempt + 1} failed: {str(e)}, retrying..."
+                    )
+            await asyncio.sleep(
+                2**attempt * 0.1
+            )  # Exponential backoff with shorter initial waits
+        print("[CLIENT] Neovim server didn't start in time")
+        return False
+
+    async def start_local_neovide(self):
+        """Start neovide connecting to the forwarded port"""
+        while True:
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    "neovide",
+                    f"--server=localhost:{self.local_port}",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                self.neovide_process = process
+                _, stderr = await process.communicate()
+                error_output = stderr.decode()
+
+                if "Neovide requires nvim version 0.10.0 or higher" in error_output:
+                    print("[CLIENT] Error: Neovide Connect Error. Retrying...")
+                    await asyncio.sleep(1)  # Add a small delay before retrying
+                    continue
+                elif process.returncode == 0:
+                    print("[CLIENT] Neovide exited normally. Terminating.")
+                    break
+                elif process.returncode == 1:
+                    if self.debug:
+                        print("[CLIENT] Restarting Neovide...")
+                else:
+                    print(f"[CLIENT] Neovide exited with code: {process.returncode}")
+                    if self.debug:
+                        print(f"[CLIENT] Error output: {error_output}")
+                    print("[CLIENT] Terminating due to unexpected error.")
+                    break
+            except Exception as e:
+                print(f"[CLIENT] An error occurred while running Neovide: {e}")
+                break
+
+    def cleanup(self):
+        """Clean up SSH connections and processes"""
+        if self._cleaned_up:
+            return  # Already cleaned up
+
+        if self.debug:
+            print("[CLIENT] Cleaning up resources...")
+
+        if hasattr(self, "_stop_event"):  # If server_only mode was active and waiting
+            self._stop_event.set()
+
+        if self.channel:
+            self.channel.close()
+
+        if self.transport and self.transport.is_active():
+            # No need to cancel port forwarding as we're handling it locally
+            pass
+
+        if self.ssh_client:
+            self.ssh_client.close()
+
+        if self.debug:
+            print("[CLIENT] Cleanup complete")
+        self._cleaned_up = True
+
+    async def run(self):
+        """Main execution flow"""
+        try:
+            self.resolve_ssh_config()
+            self.connect_ssh()
+            self.setup_port_forwarding()
+            self.start_remote_nvim()
+
+            # Wait for Neovim server to be ready
+            if await self.wait_for_neovim_server():
+                if self.debug:
+                    print("[CLIENT] Neovim is ready.")
+                if self.server_only:
+                    print(
+                        f"[CLIENT] Server-only mode: Neovim is listening on localhost:{self.local_port}"
+                    )
+                    print(
+                        "[CLIENT] Connect Neovide manually to this port. Press Ctrl+C to stop the server."
+                    )
+                    self._stop_event = asyncio.Event()
+                    await (
+                        self._stop_event.wait()
+                    )  # Wait indefinitely until cleanup is triggered
+                else:
+                    if self.debug:
+                        print("[CLIENT] Starting Neovide...")
+                    await self.start_local_neovide()
+            else:
+                print("[CLIENT] Failed to connect to Neovim server. Exiting...")
+        except Exception as e:
+            print(f"[CLIENT] An error occurred: {e}")
+            if self.debug:
+                import traceback
+
+                traceback.print_exc()
+        finally:
+            self.cleanup()
+
+
+class ForwardServer(socketserver.ThreadingTCPServer):
+    """TCP Server for SSH port forwarding"""
+
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+class ForwardHandler(socketserver.BaseRequestHandler):
+    """Handler for forwarded connections"""
+
+    def handle(self):
+        """Handle incoming connection by forwarding to SSH channel"""
+        try:
+            # Open direct-tcpip channel to localhost:port on the remote server
+            chan = self.server.ssh_transport.open_channel(
+                "direct-tcpip",
+                (self.server.remote_host, self.server.remote_port),
+                self.request.getpeername(),
+            )
+        except Exception as e:
+            if self.server.debug:
+                print(f"[CLIENT] Failed to create channel: {e}")
+            return
+
+        if chan is None:
+            if self.server.debug:
+                print("[CLIENT] Channel could not be opened")
+            return
+
+        if self.server.debug:
+            print(
+                f"[CLIENT] Tunnel established: {self.request.getpeername()} -> remote"
+            )
+
+        # Forward data in both directions
+        while True:
+            r, w, x = select.select([self.request, chan], [], [])
+            if self.request in r:
+                data = self.request.recv(1024)
+                if len(data) == 0:
+                    break
+                chan.send(data)
+            if chan in r:
+                data = chan.recv(1024)
+                if len(data) == 0:
+                    break
+                self.request.send(data)
+
+        client_address_info = "unknown peer"
+        if self.server.debug:
+            try:
+                client_address_info = self.request.getpeername()
+            except OSError:
+                client_address_info = "unknown peer (socket already closed)"
+
+        chan.close()
+        self.request.close()
+        if self.server.debug:
+            print(f"[CLIENT] Tunnel closed from {client_address_info}")
+
+
+def setup_signal_handlers(session):
+    """Set up signal handlers for graceful termination"""
+
+    def signal_handler(signum, frame):
+        print("[CLIENT] Received termination signal. Shutting down...")
+        session.cleanup()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+
+@app.command()
+def connect(
+    server_path: str = typer.Argument(..., help="<ssh-host>:<edit-directory-or-file>"),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug output"),
+    server_only: bool = typer.Option(
+        False,
+        "--server-only",
+        help="Only start remote nvim and port forward, do not launch Neovide.",
+    ),
+):
+    """Connect to a remote server and start a Neovim session"""
+    try:
+        server, path = server_path.split(":", 1)
+    except ValueError:
+        typer.echo("Error: Invalid format. Use <ssh-host>:<edit-directory-or-file>")
+        raise typer.Exit(code=1)
+
+    session = RemoteNeovimSession(server, path, debug, server_only)
+    setup_signal_handlers(session)
+
+    if debug:
+        typer.echo(f"[CLIENT] Connecting to {server} to edit {path}")
+
+    asyncio.run(session.run())
+
+
+if __name__ == "__main__":
+    app()

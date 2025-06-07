@@ -1,0 +1,20 @@
+[Unit]
+Description=Notes to Blog Synchronization Service
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/fish --command 'sync_notes \"%h/docker-com/sliverbullet/space/Publish\" \"%h/git/Notes/content\"'
+Restart=always
+RestartSec=10
+
+# Environment
+Environment=HOME=%h
+Environment=XDG_RUNTIME_DIR=/run/user/%i
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

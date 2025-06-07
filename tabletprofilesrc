@@ -1,0 +1,106 @@
+[056A:0374]
+CurrentProfileEntry=-1
+ProfileRotationList=
+
+[056A:0374][obsidian][eraser]
+Button1=1
+Button2=key e
+Button3=2
+Mode=absolute
+PressureCurve=0 0 100 100
+RawSample=4
+Rotate=auto
+ScreenMap=desktop:54 -1 15254 9499
+ScreenSpace=DP-0
+Suppress=2
+TabletPcButton=off
+Threshold=27
+
+[056A:0374][obsidian][pad]
+Button1=key 5
+Button2=key del
+Button3=key 7
+Button4=key 6
+
+[056A:0374][obsidian][stylus]
+Area=54 -1 15254 9499
+Button1=1
+Button2=key e
+Button3=2
+Mode=absolute
+PressureCurve=0 0 100 100
+RawSample=4
+Rotate=auto
+ScreenMap=desktop:54 -1 15254 9499
+ScreenSpace=desktop
+Suppress=2
+TabletPcButton=off
+Threshold=27
+
+[056A:0374][xmind][eraser]
+Button1=1
+Button2=3
+Button3=2
+Mode=absolute
+PressureCurve=0 0 100 100
+RawSample=4
+Rotate=auto
+ScreenSpace=HDMI1
+Suppress=2
+TabletPcButton=off
+Threshold=27
+
+[056A:0374][xmind][pad]
+Button1=key ctrl slash
+Button2=key ctrl alt slash
+Button3=0
+Button4=0
+
+[056A:0374][xmind][stylus]
+Area=0 0 0 0
+Button1=1
+Button2=3
+Button3=2
+Mode=absolute
+PressureCurve=0 0 100 100
+RawSample=4
+Rotate=auto
+ScreenSpace=desktop
+Suppress=2
+TabletPcButton=off
+Threshold=27
+
+[056A:0374][xournalpp][eraser]
+Button1=1
+Button2=3
+Button3=2
+Mode=absolute
+PressureCurve=0 0 100 100
+RawSample=3
+Rotate=auto
+ScreenMap=HDMI1:0 0 15200 9500|desktop:0 0 15200 9500|eDP1:0 0 15200 9500
+ScreenSpace=eDP1
+Suppress=2
+TabletPcButton=off
+Threshold=27
+
+[056A:0374][xournalpp][pad]
+Button1=key ctrl shift plus
+Button2=key ctrl shift a
+Button3=key ctrl shift p
+Button4=key ctrl shift t
+
+[056A:0374][xournalpp][stylus]
+Area=0 0 15200 9500
+Button1=1
+Button2=3
+Button3=2
+Mode=absolute
+PressureCurve=0 0 100 100
+RawSample=3
+Rotate=auto
+ScreenMap=HDMI1:0 0 15200 9500|desktop:0 0 15200 9500|eDP1:0 0 15200 9500
+ScreenSpace=desktop
+Suppress=2
+TabletPcButton=off
+Threshold=27
